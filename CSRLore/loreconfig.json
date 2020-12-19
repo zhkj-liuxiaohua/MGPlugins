@@ -1,14 +1,18 @@
 {
   "cost": "level",
-  "costname": "level",
+  "costname": "money",
   "count": 1,
   "tips": {
     "ok": "[提示] 您的装备已添加注释成功。",
-    "error": "[出错] 装备添加注释出现意外错误！请检查命令是否正确。",
+    "error": "[出错] 装备添加注释失败。请检查命令是否正确，装备是否符合品级。",
     "costly": "[失败] 过于昂贵，添加注释失败",
-    "help": "[帮助] 输入 lore [注释信息] 指令，消耗一定经验或金钱以添加您装备的注释。"
+    "help": "[帮助] 输入 lore [注释信息] 指令，消耗一定经验或金钱以添加您装备的注释。",
+    "helpex": "[帮助] 输入 loreraw [JSON] 指令，消耗一定经验或金钱以添加您装备的注释。\n注：JSON中，信息集应包含在texts关键字对应的集合中。"
   },
   "applyitems": [
-
+	"minecraft:diamond_sword",
+	"minecraft:netherite_sword",
+	"minecraft:shield",
+	"minecraft:elytra"
   ]
 }

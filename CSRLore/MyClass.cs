@@ -10,6 +10,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Web.Script.Serialization;
 using CSR;
 
@@ -35,6 +36,8 @@ namespace CSRLore
 		static string tipshelp = "[帮助] 输入 lore [注释信息] 指令，消耗一定经验或金钱以添加您装备的注释。";
 		static string tipshelpex = "[帮助] 输入 loreraw [JSON] 指令，消耗一定经验或金钱以添加您装备的注释。\n注：JSON中，信息集应包含在texts关键字对应的集合中。";
 		static ArrayList applyitems = new ArrayList();
+		
+		static LoreEditForm lform;
 		
 		static readonly JavaScriptSerializer ser = new JavaScriptSerializer();
 		
@@ -325,31 +328,66 @@ namespace CSRLore
 			                         	return true;
 			                         });
 			api.addBeforeActListener(EventKey.onServerCmd, x => {
-			                         	var e = BaseEvent.getFrom(x) as ServerCmdEvent;
-			                         	var mcmd = e.cmd.Trim();
-			                         	if (mcmd == "lore") {
-			                         		api.logout("[Lore] 用法（玩家）： /lore [说明]，/loreraw [说明集JSON]，（后台）：lore [reload]");
-			                         		return false;
-			                         	}
-			                         	if (mcmd.IndexOf("lore ") == 0) {
-			                         		var para = mcmd.Substring(5);
-			                         		if (!string.IsNullOrEmpty(para)) {
-			                         			if (para.Trim().ToLower() == "reload") {
-			                         				// TODO 此处重载配置文件
-			                         				if (!loadconfig()) {
-														api.logout("[Lore] 配置文件读写失败，请检查插件是否配置正确。");
-			                         				} else {
-			                         					api.logout("[Lore] 已成功重载配置文件。");
-			                         				}
-			                         			}
-			                         		}
-			                         		return false;
-			                         	}
-			                         	return true;
+				var e = BaseEvent.getFrom(x) as ServerCmdEvent;
+				var mcmd = e.cmd.Trim();
+				if (mcmd == "lore") {
+					api.logout("[Lore] 用法（玩家）： /lore [说明]，/loreraw [说明集JSON]，（后台）：lore [reload|edit]");
+					return false;
+				}
+				if (mcmd.IndexOf("lore ") == 0) {
+					var para = mcmd.Substring(5);
+					if (!string.IsNullOrEmpty(para)) {
+						if (para.Trim().ToLower() == "reload") {
+							// TODO 此处重载配置文件
+							if (!loadconfig()) {
+								api.logout("[Lore] 配置文件读写失败，请检查插件是否配置正确。");
+							} else {
+								api.logout("[Lore] 已成功重载配置文件。");
+							}
+						} else if (para.Trim().ToLower() == "edit") {
+							api.logout("[Lore] >> 即将进入windows窗口界面编辑环境 <<");
+							new Thread(() => {
+								try {
+									if (lform == null) {
+										lform = new LoreEditForm();
+										lform.setDataAndListeners(config, new LoreEditForm.OnBtCb() {
+											onBtOk = (data) => {
+												try {
+													config = data;
+													Directory.CreateDirectory(CONFIG_DIR);
+													File.WriteAllText(CONFIG_PATH, ser.Serialize(config));
+												} catch {}
+												if (loadconfig()) {
+													api.logout("[Lore] 配置文件已更新。");
+												}
+												lform.Close();
+												lform = null;
+											},
+											onBtCancel = () => {
+												api.logout("[Lore] 已取消配置文件表单。");
+												lform.Close();
+												lform = null;
+											}
+										});
+										lform.TopMost = true;
+										System.Windows.Forms.Application.Run(lform);
+									} else {
+										if (!lform.Visible) {
+											lform.Visible = true;
+											lform.Show();
+										}
+									}	
+								} catch {}
+							}).Start();
+						}
+					}
+					return false;
+				}
+				return true;
 			});
 			api.setCommandDescribe("lore", "自定义装备注释");
 			api.setCommandDescribe("loreraw", "自定义装备注释(JSON格式)");
-			Console.WriteLine("[Lore] 自定义装备注释指令已加载。用法（玩家）： /lore [说明]，/loreraw [说明集JSON]，（后台）：lore [reload]");
+			Console.WriteLine("[Lore] 自定义装备注释指令已加载。用法（玩家）： /lore [说明]，/loreraw [说明集JSON]，（后台）：lore [reload|edit]");
 		}
 	}
 }
