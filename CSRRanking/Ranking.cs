@@ -120,7 +120,7 @@ namespace CSRRanking
 		
 		// 根据获取关键字对应的指定表
 		public static Dictionary<string, object> getMap(string key) {
-			Dictionary<string, object> map;
+			Dictionary<string, object> map = null;
 			switch(key) {
 				case KEY_DIGMAP:
 					map = digmap;
@@ -161,11 +161,13 @@ namespace CSRRanking
 					return oldRanklists[key].ToString();
 			}
 			ArrayList al = new ArrayList();
-			foreach(string k in map.Keys) {
-				AData d = new AData();
-				d.name = k;
-				d.score = Convert.ToInt32(map[k]);
-				al.Add(d);
+			lock(map) {
+				foreach(string k in map.Keys) {
+					AData d = new AData();
+					d.name = k;
+					d.score = Convert.ToInt32(map[k]);
+					al.Add(d);
+				}
 			}
 			AData[] rls = (AData[])al.ToArray(typeof(AData));
 			Array.Sort(rls, (x, y) => y.score - x.score);
@@ -187,11 +189,13 @@ namespace CSRRanking
 		public static void addCount(string key, string name) {
 			Dictionary<string, object> map = getMap(key);
 			if (map != null) {
-				object os;
-				int score;
-				score = map.TryGetValue(name, out os) ? Convert.ToInt32(os) : 0;
-				++score;
-				map[name] = score;
+				lock(map){
+					object os;
+					int score;
+					score = map.TryGetValue(name, out os) ? Convert.ToInt32(os) : 0;
+					++score;
+					map[name] = score;
+				}
 			}
 		}
 		
@@ -236,13 +240,16 @@ namespace CSRRanking
 				               		// TODO 此处设置玩家侧边栏
 				               		startbar = startbar % 4;				// 总计4项榜单
 				               		string title = TITLES[startbar];
-				               		string content = makeRankingList(KEYSETS[startbar]);
 				               		try {
+				               			string content = makeRankingList(KEYSETS[startbar]);
 					               		CsPlayer csp = new CsPlayer(mapi, mp);
 					               		mapi.setPlayerSidebar(csp.Uuid, title, content);
 				               		}catch (AccessViolationException) {
 				               			Console.WriteLine("An AccessViolationException err, exit task.");
 				               			return;	// 发生指针读取异常时，直接结束任务
+				               		}catch (InvalidOperationException) {
+				               			Console.WriteLine("An InvalidOperationException err, exit task.");
+				               			//return; // 发生数据读取异常时，跳过本次任务
 				               		}
 				               		Thread.Sleep(5000);
 				               		msec += 5000;
