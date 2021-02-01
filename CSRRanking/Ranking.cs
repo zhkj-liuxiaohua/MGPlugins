@@ -150,37 +150,81 @@ namespace CSRRanking
 		public static Hashtable oldRanklists = new Hashtable();	// 旧榜单
 		public static Hashtable oldRankTimes = new Hashtable();	// 上次计算榜单时间
 		
+		/// <summary>
+		/// 排名显示数据
+		/// </summary>
+		public class RankViewData {
+			/// <summary>
+			/// 排序前十名表
+			/// </summary>
+			public string rankinglist;
+			/// <summary>
+			/// 是否需要追加显示
+			/// </summary>
+			public bool needmodify;
+			/// <summary>
+			/// 追加显示用的指令
+			/// </summary>
+			public string modifycmd;
+		}
+		
+		// 在已有前十排行榜里添加自己的信息
+		static string findOrAddColor(AData[] clist, AData x) {
+			if (clist == null)
+				return "";
+			bool finded = false;
+			var ranklst = new ArrayList();
+			for (int i = 0, l = clist.Length; i < 10 && i < l; i++) {
+				var d = clist[i];
+				var nd = new AData(){name = d.name, score = d.score};
+				if (x != null) {
+					if (d.name == x.name) {
+						finded = true;
+						nd.name = "§d" + nd.name;
+					}
+				}
+				ranklst.Add("" + nd.name + ", §e" + nd.score);
+			}
+			if (!finded) {
+				if (x != null) {
+					ranklst.Add("§d" + x.name + ", §e" + x.score);
+				}
+			}
+			return ser.Serialize(ranklst);;
+		}
+		
 		// 表转榜单
-		public static string makeRankingList(string key) {
+		public static string makeRankingList(string key, string pname) {
 			Dictionary<string, object> map = getMap(key);
 			if (map == null)
-				return "";
+				return null;
 			if (oldRankTimes[key] != null) {
 				DateTime ot = (DateTime)oldRankTimes[key];
 				if (ot.AddSeconds(5) > DateTime.Now)	// 未超时，使用临时榜单
-					return oldRanklists[key].ToString();
+				{
+					var psc = map[pname];
+					var oldstr = oldRanklists[key] as AData[];
+					if (psc != null)
+						return findOrAddColor(oldstr, new AData(){name = pname, score = Convert.ToInt32(psc)});
+					return findOrAddColor(oldstr, null);
+				}
 			}
 			ArrayList al = new ArrayList();
+			AData p = null;
 			lock(map) {
 				foreach(string k in map.Keys) {
-					AData d = new AData();
-					d.name = k;
-					d.score = Convert.ToInt32(map[k]);
+					AData d = new AData(){name = k, score = Convert.ToInt32(map[k])};
 					al.Add(d);
+					if (k == pname)
+						p = d;
 				}
 			}
 			AData[] rls = (AData[])al.ToArray(typeof(AData));
 			Array.Sort(rls, (x, y) => y.score - x.score);
-			ArrayList rlist = new ArrayList();
-			for (int i = 0, l = rls.Length; i < 10 && i < rls.Length; i++) {
-				AData x = rls[i];
-				rlist.Add(x.name + ", " + "§e" + x.score + " ");	// 逗号分隔符，数字部分彩色字
-			}
-			if (rlist.Count > 0) {
-				string tmplist = ser.Serialize(rlist);
-				oldRanklists[key] = tmplist;
+			if (rls.Length > 0) {
+				oldRanklists[key] = rls;
 				oldRankTimes[key] = DateTime.Now;
-				return tmplist;
+				return findOrAddColor(rls, p);
 			}
 			return "";
 		}
@@ -241,14 +285,16 @@ namespace CSRRanking
 				               		startbar = startbar % 4;				// 总计4项榜单
 				               		string title = TITLES[startbar];
 				               		try {
-				               			string content = makeRankingList(KEYSETS[startbar]);
-					               		CsPlayer csp = new CsPlayer(mapi, mp);
-					               		mapi.setPlayerSidebar(csp.Uuid, title, content);
+										CsPlayer csp = new CsPlayer(mapi, mp);
+										var name = csp.getName();
+										var uuid = csp.Uuid;
+										var str = makeRankingList(KEYSETS[startbar], name);
+										mapi.setPlayerSidebar(uuid, title, str);
 				               		}catch (AccessViolationException) {
 				               			Console.WriteLine("An AccessViolationException err, exit task.");
 				               			return;	// 发生指针读取异常时，直接结束任务
 				               		}catch (InvalidOperationException) {
-				               			Console.WriteLine("An InvalidOperationException err, exit task.");
+				               			Console.WriteLine("An InvalidOperationException err.");
 				               			//return; // 发生数据读取异常时，跳过本次任务
 				               		}
 				               		Thread.Sleep(5000);
