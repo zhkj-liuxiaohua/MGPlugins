@@ -69,6 +69,9 @@ namespace CSRRanking
 		
 		public static JavaScriptSerializer ser = null;
 		
+		// 登录信息
+		public static volatile Hashtable players = new Hashtable();
+		
 		// 重载所有数据
 		public static void reloadData() {
 			string t = RANKINGS;
@@ -285,9 +288,11 @@ namespace CSRRanking
 				               		startbar = startbar % 4;				// 总计4项榜单
 				               		string title = TITLES[startbar];
 				               		try {
-										CsPlayer csp = new CsPlayer(mapi, mp);
-										var name = csp.getName();
-										var uuid = csp.Uuid;
+										var le = players[p] as LoadNameEvent;
+										if (le == null)
+											return;
+										var name = le.playername;
+										var uuid = le.uuid;
 										var str = makeRankingList(KEYSETS[startbar], name);
 										mapi.setPlayerSidebar(uuid, title, str);
 				               		}catch (AccessViolationException) {
@@ -395,17 +400,27 @@ namespace CSRRanking
 			                         		} else if (icmd == "/ranking hide") {
 			                         			// TODO 关闭侧边栏显示
 			                         			stopRankTask(e.playerPtr);
-			                         			CsPlayer pe = new CsPlayer(api, e.playerPtr);
-			                         			api.removePlayerSidebar(pe.Uuid);
+			                         			var le = players[e.playerPtr] as LoadNameEvent;
+			                         			if (le != null)
+				                         			api.removePlayerSidebar(le.uuid);
 			                         			return false;
 			                         		}
 			                         	}
 			                         	return true;
 			                         });
+			api.addAfterActListener(EventKey.onLoadName, x => {
+			                        	// 玩家进入游戏监听，记录信息
+			                        	var e = BaseEvent.getFrom(x) as LoadNameEvent;
+			                        	if (e != null) {
+			                        		players[e.playerPtr] = e;
+			                        	}
+			                        	return true;
+			                        });
 			api.addBeforeActListener(EventKey.onPlayerLeft, x => {
 			                        	// TODO 玩家离开游戏监听
 			                        	var e = BaseEvent.getFrom(x) as PlayerLeftEvent;
 			                        	if (e != null) {
+			                        		players.Remove(e.playerPtr);
 			                        		stopRankTask(e.playerPtr);
 			                        	}
 			                        	return true;
