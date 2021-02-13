@@ -434,29 +434,6 @@ namespace CSRRanking
 
 namespace CSR {
 	partial class Plugin {
-		private static MCCSAPI mapi = null;
-		/// <summary>
-		/// 静态api对象
-		/// </summary>
-		public static MCCSAPI api { get { return mapi; } }
-		public static int onServerStart(string pathandversion) {
-			string path = null, version = null;
-			bool commercial = false;
-			string [] pav = pathandversion.Split(',');
-			if (pav.Length > 1) {
-				path = pav[0];
-				version = pav[1];
-				commercial = (pav[pav.Length - 1] == "1");
-				mapi = new MCCSAPI(path, version, commercial);
-				if (mapi != null) {
-					onStart(mapi);
-					GC.KeepAlive(mapi);
-					return 0;
-				}
-			}
-			Console.WriteLine("Load failed.");
-			return -1;
-		}
 		
 		/// <summary>
 		/// 通用调用接口，需用户自行实现
