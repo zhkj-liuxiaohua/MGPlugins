@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSRLore", "CSRLore\CSRLore.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SplashDamage", "SplashDamage\SplashDamage.csproj", "{46B05E43-2B6B-4E21-82D2-00561AEBB71C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlayerDataBackup", "PlayerDataBackup\PlayerDataBackup.csproj", "{36EA5481-2456-4E69-815A-79236A7E2CB8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -70,5 +72,9 @@ Global
 		{46B05E43-2B6B-4E21-82D2-00561AEBB71C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46B05E43-2B6B-4E21-82D2-00561AEBB71C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46B05E43-2B6B-4E21-82D2-00561AEBB71C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36EA5481-2456-4E69-815A-79236A7E2CB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36EA5481-2456-4E69-815A-79236A7E2CB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36EA5481-2456-4E69-815A-79236A7E2CB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36EA5481-2456-4E69-815A-79236A7E2CB8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
