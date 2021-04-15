@@ -44,7 +44,7 @@ namespace PlayerDataBackup
 			                        				} catch{}
 			                        			}
 			                        			return false;
-			                        		} else if (e.cmd.IndexOf("importplayers") == 0) {
+			                        		}/* else if (e.cmd.IndexOf("importplayers") == 0) {
 			                        			if (e.cmd == "importplayers") {
 			                        				try {
 			                        					if (api.importPlayersData(File.ReadAllText(PLAYERDATAFILE))) {
@@ -76,12 +76,13 @@ namespace PlayerDataBackup
 			                        			}
 			                        			return false;
 			                        		}
+			                        		*/
 			                        	}
 			                        	return true;
 			                        });
 			Console.WriteLine("[PlayerDataBackup] 玩家数据备份已加载。用法：\n" +
-			                  "\t导出玩家数据：（后台）exportplayers [Filename] \n" +
-			                  "\t导入玩家数据：（后台）importplayers [Filename]");
+			                  "\t导出玩家数据：（后台）exportplayers [Filename]");/* +
+			                  "\t导入玩家数据：（后台）importplayers [Filename]");*/
 		}
 	}
 }

@@ -24,6 +24,8 @@ namespace NoCmdBlk
 			api.addBeforeActListener(EventKey.onCommandBlockUpdate, x => false);
 			// 命令方块指令回调，直接拦截
 			api.addBeforeActListener(EventKey.onBlockCmd, x => false);
+			// NPC指令回调，直接拦截
+			api.addBeforeActListener(EventKey.onNpcCmd, x => false);
 		}
 	}
 }
@@ -36,7 +38,7 @@ namespace CSR {
 		public static void onStart(MCCSAPI api) {
 			if (api.COMMERCIAL) {
 				NoCmdBlk.MyClass.init(api);
-				Console.WriteLine("[nocmdblk] 命令方块已禁用。");
+				Console.WriteLine("[nocmdblk] 命令方块与NPC已禁用。");
 			} else {
 				Console.WriteLine("[NoCmdBlk] 暂不适用于社区版。");
 			}
