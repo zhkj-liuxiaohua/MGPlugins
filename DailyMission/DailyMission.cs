@@ -76,7 +76,7 @@ namespace DailyMission
 								// TODO 此处发放奖励并提示
 								mapi.setscoreboard(e.uuid, SB_NAME_CUP,
 								                   mapi.getscoreboard(e.uuid, SB_NAME_CUP) + 1);
-								mapi.sendText(e.uuid, "[每日] 恭喜，您今天的每日任务已全部完成！");
+								mapi.sendText(e.uuid, "[每日] §e恭喜，您今天的每日任务已全部完成！");
 								return true;
 							}
 						}
