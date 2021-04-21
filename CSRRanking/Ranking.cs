@@ -350,6 +350,9 @@ namespace CSRRanking
 			           }).Start();
 		}
 		
+		// 放置方块标签
+		static Hashtable placedflag = new Hashtable();
+		
 		// 主入口实现
 		public static void init(MCCSAPI api) {
 			mapi = api;
@@ -365,10 +368,21 @@ namespace CSRRanking
 			                        	return true;
 			                        });
 			api.addAfterActListener(EventKey.onPlacedBlock, x => {
-			                        	// TODO 设置方块记录操作
+			                        	// TODO 放置方块记录操作
 			                        	var e = BaseEvent.getFrom(x) as PlacedBlockEvent;
-			                        	if (e != null) {
-			                        		addCount(KEY_PLACEMAP, e.playername);
+			                        	if (e != null && e.RESULT) {
+			                        		placedflag[e.playerPtr] = true;
+			                        	}
+			                        	return true;
+			                        });
+			api.addAfterActListener(EventKey.onUseItem, x => {
+			                        	// TODO 放置方块记录操作2
+			                        	var e = BaseEvent.getFrom(x) as UseItemEvent;
+			                        	if (e != null && e.RESULT) {
+			                        		if (placedflag[e.playerPtr] != null) {
+			                        			addCount(KEY_PLACEMAP, e.playername);
+			                        			placedflag.Remove(e.playerPtr);
+			                        		}
 			                        	}
 			                        	return true;
 			                        });
