@@ -22,10 +22,26 @@ namespace PlayerDataBackup
 	{
 		static MCCSAPI mapi;
 		const string PLAYERDATAFILE = "players.json";
+		const string SCOREDATAFILE = "scoreboards.json";
 		static JavaScriptSerializer ser = new JavaScriptSerializer();
+		
+		static void resetDim(Dictionary<string, object> data) {
+			foreach (string k in data.Keys) {
+				var actornbt = data[k] as Dictionary<string, object>;
+				var attr = actornbt["tv"] as ArrayList;
+				foreach (Dictionary<string, object> attrck in attr) {
+					if ((attrck["ck"] as string) == "DimensionId") {
+						// 自动换至主世界
+						(attrck["cv"] as Dictionary<string, object>)["tv"] = 0;
+						break;
+					}
+				}
+			}
+		}
 		
 		public static void init(MCCSAPI api) {
 			mapi = api;
+			ser.MaxJsonLength = 1024*1024*1024;
 			api.addBeforeActListener(EventKey.onServerCmd, x => {
 			                        	var e = BaseEvent.getFrom(x) as ServerCmdEvent;
 			                        	if (e != null) {
@@ -44,11 +60,17 @@ namespace PlayerDataBackup
 			                        				} catch{}
 			                        			}
 			                        			return false;
-			                        		}/* else if (e.cmd.IndexOf("importplayers") == 0) {
+			                        			/*
+			                        		} else if (e.cmd.IndexOf("importplayers") == 0) {
 			                        			if (e.cmd == "importplayers") {
 			                        				try {
-			                        					if (api.importPlayersData(File.ReadAllText(PLAYERDATAFILE))) {
-			                        						api.logout("[PlayerDataBackup] 玩家数据已从" + PLAYERDATAFILE + "文件中全部导出。");
+			                        					string pdatstr = File.ReadAllText(PLAYERDATAFILE);
+			                        					var data = ser.Deserialize<Dictionary<string, object>>(pdatstr);
+			                        					if (data != null) {
+			                        						resetDim(data);
+			                        						if (api.importPlayersData(ser.Serialize(data))) {
+			                        							api.logout("[PlayerDataBackup] 玩家数据已从" + PLAYERDATAFILE + "文件中全部导入并重置为主世界。");
+			                        						}
 			                        					}
 			                        				}catch{}
 			                        			} else {
@@ -57,32 +79,60 @@ namespace PlayerDataBackup
 			                        					string pdatstr = File.ReadAllText(fname);
 			                        					var data = ser.Deserialize<Dictionary<string, object>>(pdatstr);
 			                        					if (data != null) {
-			                        						foreach(string k in data.Keys) {
-			                        							var actornbt = data[k] as Dictionary<string, object>;
-			                        							var attr = actornbt["tv"] as ArrayList;
-			                        							foreach (Dictionary<string, object> attrck in attr) {
-			                        								if ((attrck["ck"] as string) == "DimensionId") {
-			                        									// 自动换至主世界
-			                        									(attrck["cv"] as Dictionary<string, object>)["tv"] = 0;
-			                        									break;
-			                        								}
-			                        							}
-			                        						}
+			                        						resetDim(data);
 			                        						if (api.importPlayersData(ser.Serialize(data))) {
-			                        							api.logout("[PlayerDataBackup] 玩家数据已从" + fname + "文件中全部导出并重置为主世界。");
+			                        							api.logout("[PlayerDataBackup] 玩家数据已从" + fname + "文件中全部导入并重置为主世界。");
 			                        						}
 			                        					}
 			                        				} catch(Exception ex) {Console.WriteLine(ex.StackTrace);}
 			                        			}
 			                        			return false;
+			                        			*/
+			                        		} else if (e.cmd.IndexOf("exportscores") == 0) {
+			                        			if (e.cmd == "exportscores")
+			                        			{
+				                        			try {
+				                        				File.WriteAllText(SCOREDATAFILE, api.getAllScore());
+				                        				api.logout("[PlayerDataBackup] 世界计分板已全部导出至" + SCOREDATAFILE + "文件中。");
+				                        			} catch{}
+			                        			} else {
+			                        				try {
+			                        					string fname = e.cmd.Substring(13).Trim();
+			                        					File.WriteAllText(fname, api.getAllScore());
+				                        				api.logout("[PlayerDataBackup] 世界计分板已全部导出至" + fname + "文件中。");
+			                        				} catch{}
+			                        			}
+			                        			return false;
+			                        			/*
+			                        		} else if (e.cmd.IndexOf("importscores") == 0) {
+			                        			if (e.cmd == "importscores") {
+			                        				try {
+			                        					if (api.setAllScore(File.ReadAllText(SCOREDATAFILE))) {
+			                        						api.logout("[PlayerDataBackup] 世界计分板已从" + SCOREDATAFILE + "文件中全部导入。");
+			                        					}
+			                        				}catch{}
+			                        			} else {
+			                        				try {
+			                        					string fname = e.cmd.Substring(13).Trim();
+			                        					string pdatstr = File.ReadAllText(fname);
+			                        					if (api.setAllScore(pdatstr)) {
+			                        						api.logout("[PlayerDataBackup] 世界计分板已从" + fname + "文件中全部导入。");
+			                        					}
+			                        				} catch(Exception ex) {Console.WriteLine(ex.StackTrace);}
+			                        			}
+			                        			return false;
+			                        			*/
 			                        		}
-			                        		*/
 			                        	}
 			                        	return true;
 			                        });
 			Console.WriteLine("[PlayerDataBackup] 玩家数据备份已加载。用法：\n" +
-			                  "\t导出玩家数据：（后台）exportplayers [Filename]");/* +
-			                  "\t导入玩家数据：（后台）importplayers [Filename]");*/
+			                  "\t导出玩家数据：（后台）exportplayers [Filename]\n" +
+			                  /*
+			                  "\t导入玩家数据：（后台）importplayers [Filename]\n" +
+			                  "\t导入世界计分板：（后台）importscores [Filename]\n" +
+			                  */
+			                  "\t导出世界计分板：（后台）exportscores [Filename]");
 		}
 	}
 }
