@@ -286,14 +286,17 @@ namespace CSRRanking
 				               	while (flag) {
 				               		// TODO 此处设置玩家侧边栏
 				               		startbar = startbar % 4;				// 总计4项榜单
-				               		string title = TITLES[startbar];
+				               		int bar = startbar;
+				               		bar = (bar > 3 || bar < 0 ? 0 : bar);
+				               		string title = TITLES[bar];
+				               		string mapkey = KEYSETS[bar];
 				               		try {
 										var le = players[p] as LoadNameEvent;
 										if (le == null)
 											return;
 										var name = le.playername;
 										var uuid = le.uuid;
-										var str = makeRankingList(KEYSETS[startbar], name);
+										var str = makeRankingList(mapkey, name);
 										mapi.setPlayerSidebar(uuid, title, str);
 				               		}catch (AccessViolationException) {
 				               			Console.WriteLine("An AccessViolationException err, exit task.");
@@ -301,6 +304,9 @@ namespace CSRRanking
 				               		}catch (InvalidOperationException) {
 				               			Console.WriteLine("An InvalidOperationException err.");
 				               			//return; // 发生数据读取异常时，跳过本次任务
+				               		} catch (KeyNotFoundException) {
+				               			Console.WriteLine("KeyNotFoundException err: startbar=" + startbar);
+				               			//return; // 发生数据越位异常时，跳过本次任务
 				               		}
 				               		Thread.Sleep(5000);
 				               		msec += 5000;
