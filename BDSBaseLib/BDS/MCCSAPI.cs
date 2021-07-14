@@ -39,6 +39,8 @@ namespace CSR
 
 		// 注册事件回调管理，避免回收
 		private Dictionary<string, ArrayList> callbks = new Dictionary<string, ArrayList>();
+		// 发送tick方法管理，避免回收
+		private Dictionary<object, object> ticks = new Dictionary<object, object>();
 
 		private IntPtr hLib;
         public MCCSAPI(String DLLPath, string ver, bool commercial)
@@ -74,6 +76,12 @@ namespace CSR
         public delegate bool EventCab(Events e);
         private delegate bool ADDACTEVENTFUNC(string key, EventCab cb);
         private ADDACTEVENTFUNC caddBeforeActEvent, caddAfterActEvent, cremoveBeforeAct, cremoveAfterAct;
+		/// <summary>
+		/// 置入tick所需的无参方法
+		/// </summary>
+		public delegate void TickFunc();
+		private delegate void POSTTICK(TickFunc f);
+		private POSTTICK cpostTick;
 		private delegate bool CSHOOKFUNC(int rva, IntPtr hook, out IntPtr org);
 		private CSHOOKFUNC ccshook;
 		private delegate bool CSUNHOOKFUNC(IntPtr hook, out IntPtr org);
@@ -118,16 +126,16 @@ namespace CSR
 		}
 		public enum CommandCheatFlag : byte {
 			Cheat = 0,
-			NotCheat = 0x40
+			NotCheat = 0x80
 		}
-		private delegate void SETCOMMANDDESCRIBEFUNC(string key, string description, CommandPermissionLevel level, byte flag1, byte flag2);
+		private delegate void SETCOMMANDDESCRIBEFUNC(string key, string description, CommandPermissionLevel level, short flag1, short flag2);
 		private SETCOMMANDDESCRIBEFUNC csetCommandDescribe;
 		private delegate bool RUNCMDFUNC(string cmd);
-		private RUNCMDFUNC cruncmd, cremovePlayerBossBar, cremovePlayerSidebar;
+		private RUNCMDFUNC cruncmd, cremovePlayerBossBar, cremovePlayerSidebar, csetAllScore, cimportPlayersData;
 		private delegate void LOGOUTFUNC(string cmdout);
 		private LOGOUTFUNC clogout;
 		private delegate Std_String GETONLINEPLAYERSFUNC();
-		private GETONLINEPLAYERSFUNC cgetOnLinePlayers;
+		private GETONLINEPLAYERSFUNC cgetOnLinePlayers, cgetAllScore, cexportPlayersData;
 		private delegate Std_String GETSTRUCTUREFUNC(int did, string jsonposa, string jsonposb, bool exent, bool exblk);
 		private GETSTRUCTUREFUNC cgetStructure;
 		private delegate bool SETSTRUCTUREFUNC(string jdata, int did, string jsonposa, byte rot, bool exent, bool exblk);
@@ -135,7 +143,7 @@ namespace CSR
 		private delegate bool RENAMEBYUUIDFUNC(string uuid, string newName);
 		private RENAMEBYUUIDFUNC creNameByUuid, csetPlayerAbilities, csetPlayerTempAttributes,
 			csetPlayerMaxAttributes, csetPlayerItems, caddPlayerItemEx, csetPlayerEffects,
-			ctalkAs, cruncmdAs, cdisconnectClient, csetPlayerPermissionAndGametype;
+			ctalkAs, cruncmdAs, cdisconnectClient, csendText, csetPlayerPermissionAndGametype;
 		private delegate Std_String GETPLAYERABILITIESFUNC(string uuid);
 		private GETPLAYERABILITIESFUNC cgetPlayerAbilities, cgetPlayerAttributes, cgetPlayerMaxAttributes,
 			cgetPlayerItems, cgetPlayerSelectedItem, cgetPlayerEffects, cselectPlayer, cgetPlayerPermissionAndGametype;
@@ -147,6 +155,8 @@ namespace CSR
 		private TRANSFERSERVERFUNC ctransferserver;
 		private delegate bool TELEPORTFUNC(string uuid, float x, float y, float z, int did);
 		private TELEPORTFUNC cteleport;
+		private delegate Std_String GETMAPCOLORS(int x, int y, int z, int did);
+		private GETMAPCOLORS cgetMapColors;
 		private delegate uint SENDSIMPLEFORMFUNC(string uuid, string title, string content, string buttons);
 		private SENDSIMPLEFORMFUNC csendSimpleForm;
 		private delegate uint SENDMODALFORMFUNC(string uuid, string title, string content, string button1, string button2);
@@ -159,6 +169,25 @@ namespace CSR
 		private SETPLAYERSIDEBARFUNC csetPlayerSidebar;
 		private delegate int GETSCOREBOARDVALUEFUNC(string uuid, string objname);
 		private GETSCOREBOARDVALUEFUNC cgetscoreboardValue;
+		private delegate bool SETSCOREBOARDVALUEFUNC(string uuid, string objname, int count);
+		private SETSCOREBOARDVALUEFUNC csetscoreboardValue;
+		private delegate bool SETSERVERMOTD(string motd, bool isShow);
+		private SETSERVERMOTD csetServerMotd;
+		private delegate Std_String GETITEMRAWNAME(int id);
+		private GETITEMRAWNAME cgetItemRawname;
+		/// <summary>
+		/// 脚本引擎执行功能结果回调
+		/// </summary>
+		/// <param name="r">是否执行成功</param>
+		public delegate void JSECab(bool r);
+		private delegate void JSERUNSCRIPT(string js, JSECab cb);
+		private JSERUNSCRIPT cJSErunScript;
+		private delegate void JSEFIRECUSTOMEVENT(string ename, string jdata,  JSECab cb);
+		private JSEFIRECUSTOMEVENT cJSEfireCustomEvent;
+		private delegate int GETSCOREBYID(long id, string objname);
+		private GETSCOREBYID cgetscoreById;
+		private delegate int SETSCOREBYID(long id, string objname, int count);
+		private SETSCOREBYID csetscoreById;
 		private delegate IntPtr GETEXTRAAPI(string apiname);
 		private GETEXTRAAPI cgetExtraAPI;
 
@@ -216,6 +245,9 @@ namespace CSR
 			ctalkAs = Invoke<RENAMEBYUUIDFUNC>("talkAs");
 			cruncmdAs = Invoke<RENAMEBYUUIDFUNC>("runcmdAs");
 			cdisconnectClient = Invoke<RENAMEBYUUIDFUNC>("disconnectClient");
+			csendText = Invoke<RENAMEBYUUIDFUNC>("sendText");
+			cJSErunScript = Invoke<JSERUNSCRIPT>("JSErunScript");
+			cJSEfireCustomEvent = Invoke<JSEFIRECUSTOMEVENT>("JSEfireCustomEvent");
 			csendSimpleForm = Invoke<SENDSIMPLEFORMFUNC>("sendSimpleForm");
 			csendModalForm = Invoke<SENDMODALFORMFUNC>("sendModalForm");
 			csendCustomForm = Invoke<SENDCUSTOMFORMFUNC>("sendCustomForm");
@@ -223,6 +255,12 @@ namespace CSR
 			cselectPlayer = Invoke<GETPLAYERABILITIESFUNC>("selectPlayer");
 			caddPlayerItem = Invoke<ADDPLAYERITEMFUNC>("addPlayerItem");
 			cgetscoreboardValue = Invoke<GETSCOREBOARDVALUEFUNC>("getscoreboardValue");
+			csetscoreboardValue = Invoke<SETSCOREBOARDVALUEFUNC>("setscoreboardValue");
+			csetServerMotd = Invoke<SETSERVERMOTD>("setServerMotd");
+			cgetscoreById = Invoke<GETSCOREBYID>("getscoreById");
+			csetscoreById = Invoke<SETSCOREBYID>("setscoreById");
+			cpostTick = Invoke<POSTTICK>("postTick");
+			cgetItemRawname = Invoke<GETITEMRAWNAME>("getItemRawname");
 			ccshook = Invoke<CSHOOKFUNC>("cshook");
 			ccsunhook = Invoke<CSUNHOOKFUNC>("csunhook");
 			cdlsym = Invoke<DLSYMFUNC>("dlsym");
@@ -253,6 +291,11 @@ namespace CSR
 				cremovePlayerSidebar = ConvertExtraFunc<RUNCMDFUNC>("removePlayerSidebar");
 				cgetPlayerPermissionAndGametype = ConvertExtraFunc<GETPLAYERABILITIESFUNC>("getPlayerPermissionAndGametype");
 				csetPlayerPermissionAndGametype = ConvertExtraFunc<RENAMEBYUUIDFUNC>("setPlayerPermissionAndGametype");
+				cgetAllScore = ConvertExtraFunc<GETONLINEPLAYERSFUNC>("getAllScore");
+				csetAllScore = ConvertExtraFunc<RUNCMDFUNC>("setAllScore");
+				cgetMapColors = ConvertExtraFunc<GETMAPCOLORS>("getMapColors");
+				cexportPlayersData = ConvertExtraFunc<GETONLINEPLAYERSFUNC>("exportPlayersData");
+				cimportPlayersData = ConvertExtraFunc<RUNCMDFUNC>("importPlayersData");
 			}
 			#endregion
 		}
@@ -353,7 +396,26 @@ namespace CSR
 			}
 			return r;
 		}
-		
+
+		/// <summary>
+		/// 发送一个方法至tick
+		/// </summary>
+		/// <param name="f">待置入下一tick的无参方法</param>
+		public void postTick(TickFunc f)
+        {
+			if (cpostTick != null)
+            {
+				TickFunc tmp = null;
+				tmp = () =>
+				{
+					f();
+					ticks.Remove(tmp);
+				};
+				ticks[tmp] = f;
+				cpostTick(tmp);
+            }
+        }
+
 		/// <summary>
 		/// 设置共享数据（指针）<br/>
 		/// 注：会替换掉旧数据
@@ -391,7 +453,7 @@ namespace CSR
 		/// <param name="level">执行要求等级</param>
 		/// <param name="flag1">命令类型1</param>
 		/// <param name="flag2">命令类型2</param>
-		public void setCommandDescribeEx(string key, string description, CommandPermissionLevel level, byte flag1, byte flag2) {
+		public void setCommandDescribeEx(string key, string description, CommandPermissionLevel level, short flag1, short flag2) {
 			if (csetCommandDescribe != null)
 				csetCommandDescribe(key, description, level, flag1, flag2);
 		}
@@ -401,7 +463,7 @@ namespace CSR
 		/// <param name="key">命令</param>
 		/// <param name="description">描述</param>
 		public void setCommandDescribe(string key, string description) {
-			setCommandDescribeEx(key, description, CommandPermissionLevel.Any, (byte)CommandCheatFlag.NotCheat, (byte)CommandVisibilityFlag.Visible);
+			setCommandDescribeEx(key, description, CommandPermissionLevel.Any, (short)CommandCheatFlag.NotCheat, (short)CommandVisibilityFlag.Visible);
 		}
 		
 		/// <summary>
@@ -467,7 +529,51 @@ namespace CSR
 		public bool setStructure(string jdata, int did, string jsonposa, byte rot, bool exent, bool exblk) {
 			return (csetStructure != null) && csetStructure(jdata, did, jsonposa, rot, exent, exblk);
 		}
-		
+
+		/// <summary>
+		/// 获取所有计分板计分项
+		/// </summary>
+		/// <returns>计分板json字符串</returns>
+		public string getAllScore()
+        {
+			try
+			{
+				return (cgetAllScore != null) ? StrTool.c_str(cgetAllScore()) :
+				string.Empty;
+			}
+			catch (Exception e) { Console.WriteLine(e.StackTrace); }
+			return string.Empty;
+		}
+		/// <summary>
+		/// 设置所有计分板计分项<br/>
+		/// 注：设置过程会清空原有数据
+		/// </summary>
+		/// <param name="jdata">计分板json字符串</param>
+		/// <returns>是否设置成功</returns>
+		public bool setAllScore(string jdata)
+        {
+			return (csetAllScore != null) && csetAllScore(jdata);
+		}
+		/// <summary>
+		/// 导出地图所有离线玩家数据<br/>
+		/// 注：调用时机在地图初始化完成之后生效
+		/// </summary>
+		/// <returns></returns>
+		public string exportPlayersData()
+        {
+			return (cexportPlayersData != null) ? StrTool.c_str(cexportPlayersData()) :
+				string.Empty;
+		}
+		/// <summary>
+		/// 导入玩家数据至地图
+		/// </summary>
+		/// <param name="jdata">待导入的玩家信息集json字符串</param>
+		/// <returns>是否导入成功</returns>
+		public bool importPlayersData(string jdata)
+        {
+			return (cimportPlayersData != null) && cimportPlayersData(jdata);
+        }
+
 		/// <summary>
 		/// 重命名一个指定的玩家名<br/>
 		/// 注：该函数可能不会变更客户端实际显示名
@@ -723,6 +829,41 @@ namespace CSR
 		}
 
 		/// <summary>
+		/// 发送一个原始显示文本给玩家
+		/// </summary>
+		/// <param name="uuid">在线玩家的uuid字符串</param>
+		/// <param name="msg">文本内容，空白内容则不予发送</param>
+		/// <returns>是否发送成功</returns>
+		public bool sendText(string uuid, string msg)
+        {
+			return (csendText != null) && csendText(uuid, msg);
+		}
+
+		/// <summary>
+		/// 使用官方脚本引擎新增一段行为包脚本并执行<br/>
+		/// （注：每次调用都会新增脚本环境，请避免多次重复调用此方法）
+		/// </summary>
+		/// <param name="js">脚本文本</param>
+		/// <param name="cb">结果回调</param>
+		public void JSErunScript(string js, JSECab cb)
+        {
+			if (cJSErunScript != null)
+				cJSErunScript(js, cb);
+        }
+
+		/// <summary>
+		/// 使用官方脚本引擎发送一个自定义事件广播
+		/// </summary>
+		/// <param name="ename">自定义事件名称（不能以minecraft:开头）</param>
+		/// <param name="jdata">事件内容JSON文本</param>
+		/// <param name="cb">结果回调</param>
+		public void JSEfireCustomEvent(string ename, string jdata, JSECab cb)
+        {
+			if (cJSEfireCustomEvent != null)
+				cJSEfireCustomEvent(ename, jdata, cb);
+        }
+
+		/// <summary>
 		/// 向指定的玩家发送一个简单表单
 		/// </summary>
 		/// <param name="uuid">在线玩家的uuid字符串</param>
@@ -813,6 +954,21 @@ namespace CSR
 			return (csetPlayerPermissionAndGametype != null) && csetPlayerPermissionAndGametype(uuid, newModes);
 		}
 
+		/// <summary>
+		/// 获取一个指定位置处区块的颜色数据<br/>
+		/// 注：如区块未处于活动状态，可能返回无效颜色数据
+		/// </summary>
+		/// <param name="x"></param>
+		/// <param name="y"></param>
+		/// <param name="z"></param>
+		/// <param name="did">待读取的维度</param>
+		/// <returns>区块位置及颜色数据内容</returns>
+		public string getMapColors(int x, int y, int z, int did)
+        {
+			return (cgetMapColors != null) ? StrTool.c_str(cgetMapColors(x, y, z, did)) :
+				string.Empty;
+        }
+
 		// 社区贡献
 
 		/// <summary>
@@ -827,8 +983,61 @@ namespace CSR
 			return (cgetscoreboardValue != null) ? cgetscoreboardValue(uuid, objname) :
 				0;
         }
-
-
+		/// <summary>
+		/// 设置指定玩家指定计分板上的数值
+		/// </summary>
+		/// <param name="uuid">在线玩家的uuid字符串</param>
+		/// <param name="objname">计分板登记的名称，若不存在则自动添加</param>
+		/// <param name="count">待设定的目标值</param>
+		/// <returns>是否设置成功</returns>
+		public bool setscoreboard(string uuid, string objname, int count)
+        {
+			return csetscoreboardValue != null && csetscoreboardValue(uuid, objname, count);
+		}
+		/// <summary>
+		/// 设置服务器的显示名信息<br/>
+		/// （注：服务器名称加载时机在地图完成载入之后）
+		/// </summary>
+		/// <param name="motd">新服务器显示名信息</param>
+		/// <param name="isShow">是否公开显示</param>
+		/// <returns>是否设置成功</returns>
+		public bool setServerMotd(string motd, bool isShow)
+        {
+			return csetServerMotd != null && csetServerMotd(motd, isShow);
+        }
+		/// <summary>
+		/// 获取指定ID对应于计分板上的数值
+		/// </summary>
+		/// <param name="id">离线计分板的id</param>
+		/// <param name="objname">计分板登记的名称，若不存在则自动添加</param>
+		/// <returns>获取的目标值，若目标不存在则返回0</returns>
+		public int getscoreById(long id, string objname)
+        {
+			return (cgetscoreById != null) ? cgetscoreById(id, objname) :
+				0;
+		}
+		/// <summary>
+		/// 设置指定id对应于计分板上的数值
+		/// </summary>
+		/// <param name="id">离线计分板的id</param>
+		/// <param name="objname">计分板登记的名称，若不存在则自动添加</param>
+		/// <param name="count">待设置的值</param>
+		/// <returns>设置后的目标值，若未成功则返回0</returns>
+		public int setscoreById(long id, string objname, int count)
+        {
+			return (csetscoreById != null) ? csetscoreById(id, objname, count) :
+				0;
+		}
+		/// <summary>
+		/// 获取物品原始标识字符
+		/// </summary>
+		/// <param name="id">物品id</param>
+		/// <returns>物品原始标识字符</returns>
+		public string getItemRawname(int id)
+        {
+			return (cgetItemRawname != null) ?  StrTool.c_str(cgetItemRawname(id)) :
+				"unknow";
+		}
 		// 底层相关
 
 		/// <summary>
